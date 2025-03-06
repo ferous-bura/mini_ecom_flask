@@ -1,6 +1,6 @@
 from sqlalchemy import create_engine, Column, Integer, String, Float, JSON
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, Session
 
 DATABASE_URL = "sqlite:///ecomm.db"
 engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
@@ -10,18 +10,18 @@ Base = declarative_base()
 class Order(Base):
     __tablename__ = "orders"
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer)  # Telegram user ID
-    products = Column(JSON)    # List of product IDs or details
+    user_id = Column(Integer)
+    products = Column(JSON)
     address = Column(String)
-    status = Column(String, default="pending")  # pending, paid, shipped, delivered
-    payment_intent = Column(String)  # From payment provider
+    status = Column(String, default="pending")
+    payment_intent = Column(String)
 
 Base.metadata.create_all(bind=engine)
 
+# Dependency for FastAPI to provide a DB session
 def get_db():
     db = SessionLocal()
     try:
         yield db
     finally:
         db.close()
-

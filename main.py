@@ -1,39 +1,35 @@
 from fastapi import FastAPI, Depends, BackgroundTasks
 from sqlalchemy.orm import Session
-from telegram.ext import Application
+from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters
 from bot_handlers import start, shop, button, handle_message
 from database import get_db, Order
-from telegram.ext import CommandHandler, CallbackQueryHandler, MessageHandler, Filters
 import uvicorn
+from contextlib import asynccontextmanager
 
 app = FastAPI()
 telegram_app = Application.builder().token("7974258002:AAEpZeM3aAN07lOvjim07qMGPrSmiedZw3A").build()
 
-# https://t.me/DynamicChewataBot
-
-# Register handlers
 telegram_app.add_handler(CommandHandler("start", start))
 telegram_app.add_handler(CommandHandler("shop", shop))
 telegram_app.add_handler(CallbackQueryHandler(button))
-telegram_app.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_message))
+telegram_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-@app.on_event("startup")
-async def startup_event():
-    telegram_app.initialize()
-    telegram_app.start()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await telegram_app.initialize()
+    await telegram_app.start()
     await telegram_app.updater.start_polling()
-
-@app.on_event("shutdown")
-async def shutdown_event():
+    yield
     await telegram_app.updater.stop()
-    telegram_app.stop()
+    await telegram_app.stop()
+
+app = FastAPI(lifespan=lifespan)
 
 @app.post("/webhook/stripe")
 async def stripe_webhook(payload: dict, db: Session = Depends(get_db), background_tasks: BackgroundTasks = None):
     order_id = payload.get("data", {}).get("object", {}).get("metadata", {}).get("order_id")
     if not order_id:
         return {"status": "ignored"}
-
     order = db.query(Order).filter(Order.id == order_id).first()
     if order and payload["type"] == "payment_intent.succeeded":
         order.status = "paid"
