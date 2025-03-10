@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Delivery Options</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            const theme = localStorage.getItem('theme');
+            if (theme === 'dark') {
+                $('html').addClass('dark');
+                $('#theme-toggle').prop('checked', true);
+            }
+
+            $('#theme-toggle').change(function() {
+                if (this.checked) {
+                    $('html').addClass('dark');
+                    localStorage.setItem('theme', 'dark');
+                } else {
+                    $('html').removeClass('dark');
+                    localStorage.setItem('theme', 'light');
+                }
+            });
+
+            $('#add-delivery-btn').click(function() {
+                $('#add-delivery-modal').removeClass('hidden');
+            });
+
+            $('.edit-delivery-btn').click(function() {
+                const id = $(this).data('id');
+                const name = $(this).data('name');
+                const fee = $(this).data('fee');
+                const desc = $(this).data('description');
+                $('#edit-delivery-id').val(id);
+                $('#edit-name').val(name);
+                $('#edit-base-fee').val(fee);
+                $('#edit-description').val(desc);
+                $('#edit-delivery-modal').removeClass('hidden');
+            });
+
+            $('.close-modal').click(function() {
+                $(this).closest('.modal').addClass('hidden');
+            });
+        });
+    </script>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200">
+<div class="flex h-screen">
+    <aside class="bg-gray-800 text-white w-64 p-4 hidden md:block">
+        <!-- Sidebar content -->
+        <nav>
+            <a href="{{ url_for('staff.dashboard') }}" class="block py-2 px-4 hover:bg-gray-700 rounded">Overview</a>
+            <a href="{{ url_for('staff.manage_users') }}" class="block py-2 px-4 hover:bg-gray-700 rounded">Users</a>
+            <a href="{{ url_for('staff.manage_products') }}"
+               class="block py-2 px-4 hover:bg-gray-700 rounded">Products</a>
+            <a href="{{ url_for('staff.manage_orders') }}" class="block py-2 px-4 hover:bg-gray-700 rounded">Orders</a>
+            <a href="{{ url_for('staff.manage_categories') }}" class="block py-2 px-4 hover:bg-gray-700 rounded">Categories</a>
+            <a href="{{ url_for('staff.manage_settings') }}"
+               class="block py-2 px-4 hover:bg-gray-700 rounded">Settings</a>
+            <a href="{{ url_for('staff.manage_delivery_options') }}" class="block py-2 px-4 hover:bg-gray-700 rounded">Delivery
+                Options</a>
+        </nav>
+    </aside>
+
+    <main class="flex-1 p-4">
+        <header class="flex justify-between items-center mb-4">
+            <h1 class="text-3xl font-semibold">Manage Delivery Options</h1>
+            <div class="flex items-center">
+                <input type="checkbox" id="theme-toggle" class="mr-2">
+                <label for="theme-toggle">Dark Mode</label>
+            </div>
+        </header>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        {% for category, message in messages %}
+        <div class="bg-{{ 'green' if category == 'success' else 'red' }}-100 border border-{{ 'green' if category == 'success' else 'red' }}-400 text-{{ 'green' if category == 'success' else 'red' }}-700 px-4 py-3 rounded relative mb-4"
+             role="alert">
+            <span class="block sm:inline">{{ message }}</span>
+        </div>
+        {% endfor %}
+        {% endif %}
+        {% endwith %}
+
+        <div class="bg-white rounded shadow p-4 dark:bg-gray-800">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold dark:text-gray-100">Delivery Options</h3>
+                <button id="add-delivery-btn"
+                        class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Add Delivery Option
+                </button>
+            </div>
+            <table class="w-full">
+                <thead>
+                <tr>
+                    <th class="text-left py-2 dark:text-gray-300">Name</th>
+                    <th class="text-left py-2 dark:text-gray-300">Fee</th>
+                    <th class="text-left py-2 dark:text-gray-300">Description</th>
+                    <th class="text-left py-2 dark:text-gray-300">Actions</th>
+                </tr>
+                </thead>
+                <tbody class="dark:text-gray-200">
+                {% for option in delivery_options %}
+                <tr>
+                    <td class="py-2">{{ option.name }}</td>
+                    <td class="py-2">${{ option.base_fee }}</td>
+                    <td class="py-2">{{ option.description }}</td>
+                    <td class="py-2">
+                        <button class="edit-delivery-btn text-blue-500 hover:underline mr-2" data-id="{{ option.id }}"
+                                data-name="{{ option.name }}" data-fee="{{ option.base_fee }}"
+                                data-description="{{ option.description }}">Edit
+                        </button>
+                        <a href="{{ url_for('staff.delete_delivery_option', delivery_id=option.id) }}"
+                           class="text-red-500 hover:underline"
+                           onclick="return confirm('Are you sure you want to delete this delivery option?')">Delete</a>
+                    </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Add Delivery Option Modal -->
+        <div id="add-delivery-modal"
+             class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden modal">
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-lg w-full max-w-md">
+                <h3 class="text-lg font-semibold mb-4 dark:text-gray-100">Add Delivery Option</h3>
+                <form method="POST" action="{{ url_for('staff.add_delivery_option') }}">
+                    <div class="mb-4">
+                        <label for="name" class="block text-gray-700 dark:text-gray-300">Name</label>
+                        <input type="text" name="name" id="name"
+                               class="w-full p-2 border rounded dark:bg-gray-700 dark:text-gray-200" required>
+                    </div>
+                    <div class="mb-4">
+                        <label for="base_fee" class="block text-gray-700 dark:text-gray-300">Base Fee</label>
+                        <input type="number" step="0.01" name="base_fee" id="base_fee"
+                               class="w-full p-2 border rounded dark:bg-gray-700 dark:text-gray-200" required>
+                    </div>
+                    <div class="mb-4">
+                        <label for="description" class="block text-gray-700 dark:text-gray-300">Description</label>
+                        <textarea name="description" id="description"
+                                  class="w-full p-2 border rounded dark:bg-gray-700 dark:text-gray-200"></textarea>
+                    </div>
+                    <div class="flex justify-end">
+                        <button type="button"
+                                class="close-modal mr-2 text-gray-500 hover:text-gray-700 dark:text-gray-300 dark:hover:text-gray-100">
+                            Cancel
+                        </button>
+                        <button type="submit"
+                                class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Add
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Edit Delivery Option Modal -->
+        <div id="edit-delivery-modal"
+             class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden modal">
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-lg w-full max-w-md">
+                <h3 class="text-lg font-semibold mb-4 dark:text-gray-100">Edit Delivery Option</h3>
+                <form method="POST" action="{{ url_for('staff.edit_delivery_option') }}">
+                    <input type="hidden" name="delivery_id" id="edit-delivery-id">
+                    <div class="mb-4">
+                        <label for="edit-name" class="block text-gray-700 dark:text-gray-300">Name</label>
+                        <input type="text" name="name" id="edit-name"
+                               class="w-full p-2 border rounded dark:bg-gray-700 dark:text-gray-200" required>
+                    </div>
+                    <div class="mb-4">
+                        <label for="edit-base-fee" class="block text-gray-700 dark:text-gray-300">Base Fee</label>
+                        <input type="number" step="0.01" name="base_fee" id="edit-base-fee"
+                               class="w-full p-2 border rounded dark:bg-gray-700 dark:text-gray-200" required>
+                    </div>
+                    <div class="mb-4">
+                        <label for="edit-description" class="block text-gray-700 dark:text-gray-300">Description</label>
+                        <textarea name="description" id="edit-description"
+                                  class="w-full p-2 border rounded dark:bg-gray-700 dark:text-gray-200"></textarea>
+                    </div>
+                    <div class="flex justify-end">
+                        <button type="button"
+                                class="close-modal mr-2 text-gray-500 hover:text-gray-700 dark:text-gray-300 dark:hover:text-gray-100">
+                            Cancel
+                        </button>
+                        <button type="submit"
+                                class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Save
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </main>
+</div>
+</body>
+</html>

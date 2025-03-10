@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Orders</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            const theme = localStorage.getItem('theme');
+            if (theme === 'dark') {
+                $('html').addClass('dark');
+                $('#theme-toggle').prop('checked', true);
+            }
+
+            $('#theme-toggle').change(function() {
+                if (this.checked) {
+                    $('html').addClass('dark');
+                    localStorage.setItem('theme', 'dark');
+                } else {
+                    $('html').removeClass('dark');
+                    localStorage.setItem('theme', 'light');
+                }
+            });
+
+            $('.edit-order-btn').click(function() {
+                const orderId = $(this).data('id');
+                $('#edit-order-id').val(orderId);
+                $('#edit-delivery-option').val($(this).data('delivery-option-id'));
+                $('#edit-payment-status').val($(this).data('payment-status'));
+                $('#edit-order-modal').removeClass('hidden');
+            });
+        });
+    </script>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200">
+<div class="flex h-screen">
+    <aside class="bg-gray-800 text-white w-64 p-4 hidden md:block">
+        <!-- Sidebar content -->
+        <nav>
+            <a href="{{ url_for('staff.dashboard') }}" class="block py-2 px-4 hover:bg-gray-700 rounded">Overview</a>
+            <a href="{{ url_for('staff.manage_users') }}" class="block py-2 px-4 hover:bg-gray-700 rounded">Users</a>
+            <a href="{{ url_for('staff.manage_products') }}"
+               class="block py-2 px-4 hover:bg-gray-700 rounded">Products</a>
+            <a href="{{ url_for('staff.manage_orders') }}" class="block py-2 px-4 hover:bg-gray-700 rounded">Orders</a>
+            <a href="{{ url_for('staff.manage_categories') }}" class="block py-2 px-4 hover:bg-gray-700 rounded">Categories</a>
+            <a href="{{ url_for('staff.manage_settings') }}"
+               class="block py-2 px-4 hover:bg-gray-700 rounded">Settings</a>
+            <a href="{{ url_for('staff.manage_delivery_options') }}" class="block py-2 px-4 hover:bg-gray-700 rounded">Delivery
+                Options</a>
+        </nav>
+    </aside>
+
+    <main class="flex-1 p-4">
+        <header class="flex justify-between items-center mb-4">
+            <h1 class="text-3xl font-semibold">Manage Orders</h1>
+            <div class="flex items-center">
+                <input type="checkbox" id="theme-toggle" class="mr-2">
+                <label for="theme-toggle">Dark Mode</label>
+            </div>
+        </header>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        {% for category, message in messages %}
+        <div class="bg-{{ 'green' if category == 'success' else 'red' }}-100 border border-{{ 'green' if category == 'success' else 'red' }}-400 text-{{ 'green' if category == 'success' else 'red' }}-700 px-4 py-3 rounded relative mb-4"
+             role="alert">
+            <span class="block sm:inline">{{ message }}</span>
+        </div>
+        {% endfor %}
+        {% endif %}
+        {% endwith %}
+
+        <div class="bg-white rounded shadow p-4 dark:bg-gray-800">
+            <table class="w-full">
+                <thead>
+                <tr>
+                    <th class="text-left py-2 dark:text-gray-300">Order ID</th>
+                    <th class="text-left py-2 dark:text-gray-300">User</th>
+                    <th class="text-left py-2 dark:text-gray-300">Total</th>
+                    <th class="text-left py-2 dark:text-gray-300">Delivery</th>
+                    <th class="text-left py-2 dark:text-gray-300">Payment Status</th>
+                    <th class="text-left py-2 dark:text-gray-300">Actions</th>
+                </tr>
+                </thead>
+                <tbody class="dark:text-gray-200">
+                {% for order in orders %}
+                <tr>
+                    <td class="py-2">{{ order.id }}</td>
+                    <td class="py-2">{{ order.user.full_name }}</td>
+                    <td class="py-2">${{ order.total_amount|round(2) }}</td>
+                    <td class="py-2">{{ order.delivery_option.name if order.delivery_option else 'Not Set' }}</td>
+                    <td class="py-2">{{ order.payment_status }}</td>
+                    <td class="py-2">
+                        <button class="edit-order-btn text-blue-500 hover:underline mr-2" data-id="{{ order.id }}"
+                                data-delivery-option-id="{{ order.delivery_option_id or '' }}"
+                                data-payment-status="{{ order.payment_status }}">Edit
+                        </button>
+                        <a href="{{ url_for('staff.delete_order', order_id=order.id) }}"
+                           class="text-red-500 hover:underline"
+                           onclick="return confirm('Are you sure you want to delete this order?')">Delete</a>
+                        {% if not order.approved %}
+                        <a href="{{ url_for('staff.approve_order', order_id=order.id) }}"
+                           class="text-green-500 hover:underline ml-2">Approve</a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Edit Order Modal -->
+        <div id="edit-order-modal"
+             class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden modal">
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-lg w-full max-w-md">
+                <h3 class="text-lg font-semibold mb-4 dark:text-gray-100">Edit Order</h3>
+                <form method="POST" action="{{ url_for('staff.update_delivery_option', order_id=0) }}">
+                    <input type="hidden" name="order_id" id="edit-order-id">
+                    <div class="mb-4">
+                        <label class="block text-gray-700 dark:text-gray-300">Delivery Option</label>
+                        <select name="delivery_option_id" id="edit-delivery-option"
+                                class="w-full p-2 border rounded dark:bg-gray-700 dark:text-gray-200">
+                            <option value="">-- Select --</option>
+                            {% for option in delivery_options %}
+                            <option value="{{ option.id }}">{{ option.name }} - ${{ option.base_fee }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-gray-700 dark:text-gray-300">Payment Status</label>
+                        <select name="payment_status" id="edit-payment-status"
+                                class="w-full p-2 border rounded dark:bg-gray-700 dark:text-gray-200">
+                            <option value="Pending">Pending</option>
+                            <option value="Paid">Paid</option>
+                            <option value="Failed">Failed</option>
+                        </select>
+                    </div>
+                    <div class="flex justify-end">
+                        <button type="button"
+                                class="close-modal mr-2 text-gray-500 hover:text-gray-700 dark:text-gray-300 dark:hover:text-gray-100">
+                            Cancel
+                        </button>
+                        <button type="submit"
+                                class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Save
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </main>
+</div>
+</body>
+</html>

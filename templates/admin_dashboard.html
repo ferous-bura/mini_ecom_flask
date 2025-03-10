@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ecommerce Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            const theme = localStorage.getItem('theme');
+            if (theme === 'dark') {
+                $('html').addClass('dark');
+                $('#theme-toggle').prop('checked', true);
+            }
+
+            $('#theme-toggle').change(function() {
+                if (this.checked) {
+                    $('html').addClass('dark');
+                    localStorage.setItem('theme', 'dark');
+                } else {
+                    $('html').removeClass('dark');
+                    localStorage.setItem('theme', 'light');
+                }
+            });
+        });
+    </script>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200">
+
+<div class="flex h-screen">
+    <aside class="bg-gray-800 text-white w-64 p-4 hidden md:block">
+        <div class="mb-8">
+            <h2 class="text-2xl font-semibold">Dashboard</h2>
+        </div>
+        <nav>
+            <a href="{{ url_for('staff.dashboard') }}" class="block py-2 px-4 hover:bg-gray-700 rounded">Overview</a>
+            <a href="{{ url_for('staff.manage_users') }}" class="block py-2 px-4 hover:bg-gray-700 rounded">Users</a>
+            <a href="{{ url_for('staff.manage_products') }}"
+               class="block py-2 px-4 hover:bg-gray-700 rounded">Products</a>
+            <a href="{{ url_for('staff.manage_orders') }}" class="block py-2 px-4 hover:bg-gray-700 rounded">Orders</a>
+            <a href="{{ url_for('staff.manage_categories') }}" class="block py-2 px-4 hover:bg-gray-700 rounded">Categories</a>
+            <a href="{{ url_for('staff.manage_settings') }}"
+               class="block py-2 px-4 hover:bg-gray-700 rounded">Settings</a>
+            <a href="{{ url_for('staff.manage_delivery_options') }}" class="block py-2 px-4 hover:bg-gray-700 rounded">Delivery
+                Options</a>
+        </nav>
+    </aside>
+
+    <main class="flex-1 p-4">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        {% for category, message in messages %}
+        <div class="fixed top-4 right-4 p-4 bg-{{ 'green' if category == 'success' else 'red' }}-500 text-white rounded shadow-lg">
+            {{ message }}
+            <button onclick="this.parentElement.remove()" class="ml-2 text-white">×</button>
+        </div>
+        {% endfor %}
+        {% endif %}
+        {% endwith %}
+        <header class="flex justify-between items-center mb-4">
+            <h1 class="text-3xl font-semibold">{% block title %}Overview{% endblock %}</h1>
+            <div class="flex items-center">
+                <input type="checkbox" id="theme-toggle" class="mr-2">
+                <label for="theme-toggle">Dark Mode</label>
+            </div>
+            <div class="flex items-center">
+                <input type="text" placeholder="Search..." class="border rounded py-2 px-4 mr-2">
+                <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Search</button>
+            </div>
+        </header>
+
+        {% block content %}
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <!-- User Statistics -->
+            <div class="bg-white rounded shadow p-4 dark:bg-gray-800">
+                <h3 class="text-lg font-semibold mb-2 dark:text-gray-100">User Statistics</h3>
+                <div class="flex justify-between">
+                    <div>
+                        <p class="text-gray-600 dark:text-gray-400">Total Users</p>
+                        <p class="text-2xl font-bold dark:text-white" id="total-users">Loading...</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-600 dark:text-gray-400">Active Users</p>
+                        <p class="text-2xl font-bold dark:text-white" id="active-users">Loading...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Product Statistics -->
+            <div class="bg-white rounded shadow p-4 dark:bg-gray-800">
+                <h3 class="text-lg font-semibold mb-2 dark:text-gray-100">Product Statistics</h3>
+                <div class="flex justify-between">
+                    <div>
+                        <p class="text-gray-600 dark:text-gray-400">Total Products</p>
+                        <p class="text-2xl font-bold dark:text-white" id="total-products">Loading...</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-600 dark:text-gray-400">Out of Stock</p>
+                        <p class="text-2xl font-bold dark:text-white" id="out-of-stock">Loading...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Order Statistics -->
+            <div class="bg-white rounded shadow p-4 dark:bg-gray-800">
+                <h3 class="text-lg font-semibold mb-2 dark:text-gray-100">Order Statistics</h3>
+                <div class="flex justify-between">
+                    <div>
+                        <p class="text-gray-600 dark:text-gray-400">Total Orders</p>
+                        <p class="text-2xl font-bold dark:text-white" id="total-orders">Loading...</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-600 dark:text-gray-400">Pending Orders</p>
+                        <p class="text-2xl font-bold dark:text-white" id="pending-orders">Loading...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Revenue Statistics (New) -->
+            <div class="bg-white rounded shadow p-4 dark:bg-gray-800">
+                <h3 class="text-lg font-semibold mb-2 dark:text-gray-100">Revenue Statistics</h3>
+                <div class="flex justify-between">
+                    <div>
+                        <p class="text-gray-600 dark:text-gray-400">Total Revenue</p>
+                        <p class="text-2xl font-bold dark:text-white" id="total-revenue">Loading...</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-600 dark:text-gray-400">Avg Order Value</p>
+                        <p class="text-2xl font-bold dark:text-white" id="avg-order-value">Loading...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Users -->
+            <div class="bg-white rounded shadow p-4 col-span-full md:col-span-2 dark:bg-gray-800">
+                <h3 class="text-lg font-semibold mb-2 dark:text-gray-100">Recent Users</h3>
+                <table class="w-full">
+                    <thead>
+                    <tr>
+                        <th class="text-left py-2 dark:text-gray-300">Name</th>
+                        <th class="text-left py-2 dark:text-gray-300">Email</th>
+                        <th class="text-left py-2 dark:text-gray-300">Joined</th>
+                    </tr>
+                    </thead>
+                    <tbody id="recent-users-table" class="dark:text-gray-200">
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Top Products (New) -->
+            <div class="bg-white rounded shadow p-4 col-span-full dark:bg-gray-800">
+                <h3 class="text-lg font-semibold mb-2 dark:text-gray-100">Top Products</h3>
+                <table class="w-full">
+                    <thead>
+                    <tr>
+                        <th class="text-left py-2 dark:text-gray-300">Product</th>
+                        <th class="text-left py-2 dark:text-gray-300">Sales</th>
+                        <th class="text-left py-2 dark:text-gray-300">Revenue</th>
+                    </tr>
+                    </thead>
+                    <tbody id="top-products-table" class="dark:text-gray-200">
+                    <!-- Placeholder data will be populated by JS -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Notifications (New) -->
+            <div class="bg-white rounded shadow p-4 col-span-full dark:bg-gray-800">
+                <h3 class="text-lg font-semibold mb-2 dark:text-gray-100">Notifications</h3>
+                <ul class="list-disc pl-5" id="notifications">
+                    <li class="text-gray-600 dark:text-gray-400">New order received (#001)</li>
+                    <li class="text-gray-600 dark:text-gray-400">Low stock for Product X</li>
+                    <li class="text-gray-600 dark:text-gray-400">User registered: John Doe</li>
+                </ul>
+            </div>
+
+            <!-- Sales Chart + Chat Box with Filters -->
+            <div class="col-span-full">
+                <div class="mb-4 flex space-x-4">
+                    <input type="date" id="start-date" class="border rounded py-2 px-4">
+                    <input type="date" id="end-date" class="border rounded py-2 px-4">
+                    <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+                            onclick="fetchDashboardData()">Filter
+                    </button>
+                </div>
+                <div class="flex flex-col md:flex-row gap-4">
+                    <!-- Sales Chart -->
+                    <div class="flex-1 bg-white rounded shadow p-4 dark:bg-gray-800">
+                        <h3 class="text-lg font-semibold mb-2 dark:text-gray-100">Sales Chart</h3>
+                        <div class="h-64 bg-gray-200 flex items-center justify-center dark:bg-gray-700">
+                            <p class="text-gray-500 dark:text-gray-300">Chart Placeholder</p>
+                        </div>
+                    </div>
+
+                    <!-- Chat Section (Pinned at Bottom) -->
+                    <div class="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 shadow-lg rounded-t-lg p-4 mx-4 mb-4">
+                        <div class="border-b border-gray-200 dark:border-gray-700 mb-2">
+                            <ul class="flex space-x-2" id="chat-tabs">
+                                <!-- Tabs will be dynamically added here -->
+                            </ul>
+                        </div>
+                        <div class="h-48 overflow-y-auto p-2 bg-gray-100 dark:bg-gray-700 rounded-lg mb-2"
+                             id="chat-messages">
+                            <p class="text-gray-500 dark:text-gray-300">Select a user to start chatting...</p>
+                        </div>
+                        <div class="flex">
+                            <input type="text" id="chat-input" placeholder="Type a message..."
+                                   class="flex-1 border rounded py-2 px-4 dark:bg-gray-600 dark:text-white">
+                            <button class="ml-2 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+                                    onclick="sendMessage()">Send
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endblock %}
+    </main>
+</div>
+
+<script>
+    async function fetchDashboardData() {
+        try {
+            const statsResponse = await fetch('/staff/dashboard/stats');
+            const statsData = await statsResponse.json();
+
+            document.getElementById('total-users').textContent = statsData.total_users;
+            document.getElementById('active-users').textContent = statsData.active_users;
+            document.getElementById('total-products').textContent = statsData.total_products;
+            document.getElementById('out-of-stock').textContent = statsData.out_of_stock_products;
+            document.getElementById('total-orders').textContent = statsData.total_orders;
+            document.getElementById('pending-orders').textContent = statsData.pending_orders;
+            document.getElementById('total-revenue').textContent = '$' + statsData.total_revenue.toFixed(2);
+            document.getElementById('avg-order-value').textContent = '$' + statsData.avg_order_value.toFixed(2);
+
+            const usersResponse = await fetch('/staff/dashboard/recent_users');
+            const usersData = await usersResponse.json();
+            const tableBody = document.getElementById('recent-users-table');
+            tableBody.innerHTML = '';
+            usersData.forEach(user => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="py-2">${user.name}</td>
+                    <td class="py-2">${user.email}</td>
+                    <td class="py-2">${user.joined}</td>
+                `;
+                tableBody.appendChild(row);
+            });
+
+            const topProductsResponse = await fetch('/staff/dashboard/top_products');
+            const topProductsData = await topProductsResponse.json();
+            const topProductsTable = document.getElementById('top-products-table');
+            topProductsTable.innerHTML = '';
+            topProductsData.forEach(product => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="py-2">${product.name}</td>
+                    <td class="py-2">${product.sales}</td>
+                    <td class="py-2">${product.revenue}</td>
+                `;
+                topProductsTable.appendChild(row);
+            });
+
+            // Update notifications with delivery/payment insights
+            const notifications = document.getElementById('notifications');
+            notifications.innerHTML = `
+                <li class="text-gray-600 dark:text-gray-400">New order received (#${statsData.total_orders})</li>
+                <li class="text-gray-600 dark:text-gray-400">${statsData.pending_orders} pending orders</li>
+                <li class="text-gray-600 dark:text-gray-400">${statsData.total_orders - statsData.pending_orders} orders paid</li>
+            `;
+
+        } catch (error) {
+            console.error('Error fetching dashboard data:', error);
+        }
+    }
+const chatUsers = [
+        { id: 1, name: "John Doe" },
+        { id: 2, name: "Jane Smith" },
+        { id: 3, name: "Alex Brown" }
+    ];
+
+    let activeTab = null;
+    const chatMessages = {};
+
+    // Initialize chat tabs
+    function initializeChatTabs() {
+        const chatTabs = document.getElementById('chat-tabs');
+        chatUsers.forEach(user => {
+            chatMessages[user.id] = []; // Initialize message array for each user
+            const tab = document.createElement('li');
+            tab.className = 'relative';
+            tab.innerHTML = `
+                <button class="px-4 py-2 bg-gray-200 dark:bg-gray-600 rounded-t-lg text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-500" onclick="switchTab(${user.id})">
+                    ${user.name}
+                    <span class="absolute top-1 right-1 text-red-500 hover:text-red-700" onclick="closeTab(${user.id}, event)">✕</span>
+                </button>
+            `;
+            chatTabs.appendChild(tab);
+        });
+        if (chatUsers.length > 0) {
+            switchTab(chatUsers[0].id); // Open the first tab by default
+        }
+    }
+
+    // Switch between chat tabs
+    function switchTab(userId) {
+        activeTab = userId;
+        const chatMessagesDiv = document.getElementById('chat-messages');
+        chatMessagesDiv.innerHTML = chatMessages[userId].map(msg => `<p class="text-gray-600 dark:text-gray-300">${msg}</p>`).join('');
+        chatMessagesDiv.scrollTop = chatMessagesDiv.scrollHeight;
+
+        // Highlight active tab
+        document.querySelectorAll('#chat-tabs button').forEach(btn => {
+            btn.classList.remove('bg-blue-500', 'text-white');
+            btn.classList.add('bg-gray-200', 'dark:bg-gray-600', 'text-gray-800', 'dark:text-gray-200');
+        });
+        const activeBtn = document.querySelector(`#chat-tabs button[onclick="switchTab(${userId})"]`);
+        if (activeBtn) {
+            activeBtn.classList.remove('bg-gray-200', 'dark:bg-gray-600', 'text-gray-800', 'dark:text-gray-200');
+            activeBtn.classList.add('bg-blue-500', 'text-white');
+        }
+    }
+
+    // Close a chat tab
+    function closeTab(userId, event) {
+        event.stopPropagation(); // Prevent switching to the tab
+        const tab = document.querySelector(`#chat-tabs button[onclick="switchTab(${userId})"]`).parentElement;
+        tab.remove();
+        delete chatMessages[userId];
+        const remainingUsers = chatUsers.filter(user => user.id !== userId);
+        if (remainingUsers.length > 0) {
+            switchTab(remainingUsers[0].id);
+        } else {
+            activeTab = null;
+            document.getElementById('chat-messages').innerHTML = '<p class="text-gray-500 dark:text-gray-300">Select a user to start chatting...</p>';
+        }
+    }
+
+    // Send a message
+    function sendMessage() {
+        if (!activeTab) return;
+        const input = document.getElementById('chat-input');
+        const message = input.value.trim();
+        if (message) {
+            chatMessages[activeTab].push(message);
+            const chatMessagesDiv = document.getElementById('chat-messages');
+            chatMessagesDiv.innerHTML = chatMessages[activeTab].map(msg => `<p class="text-gray-600 dark:text-gray-300">${msg}</p>`).join('');
+            chatMessagesDiv.scrollTop = chatMessagesDiv.scrollHeight;
+            input.value = '';
+        }
+    }
+
+    // Initialize tabs on page load
+    initializeChatTabs();
+
+    // Fetch data on page load
+    fetchDashboardData();
+</script>
+</body>
+</html>

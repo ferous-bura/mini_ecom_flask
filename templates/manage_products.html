@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Products</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/cropperjs@1.5.12/dist/cropper.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cropperjs@1.5.12/dist/cropper.min.css">
+    <style>
+        .cropper-container {
+            max-height: 400px;
+            max-width: 600px;
+        }
+        .star-rating {
+            color: #ffd700; /* Gold color for stars */
+        }
+        .star-rating .star {
+            cursor: pointer;
+        }
+    </style>
+    <script>
+        $(document).ready(function() {
+            const theme = localStorage.getItem('theme');
+            if (theme === 'dark') {
+                $('html').addClass('dark');
+                $('#theme-toggle').prop('checked', true);
+            }
+
+            $('#theme-toggle').change(function() {
+                if (this.checked) {
+                    $('html').addClass('dark');
+                    localStorage.setItem('theme', 'dark');
+                } else {
+                    $('html').removeClass('dark');
+                    localStorage.setItem('theme', 'light');
+                }
+            });
+
+            $('#add-product-btn').click(function() {
+                $('#add-product-modal').removeClass('hidden');
+            });
+
+            $('.edit-product-btn').click(function() {
+                const productId = $(this).data('id');
+                const name = $(this).data('name');
+                const price = $(this).data('price');
+                const description = $(this).data('description');
+                const stock = $(this).data('stock');
+                const sku = $(this).data('sku');
+                $('#edit-product-id').val(productId);
+                $('#edit-product-name').val(name);
+                $('#edit-product-price').val(price);
+                $('#edit-product-description').val(description);
+                $('#edit-product-stock').val(stock);
+                $('#edit-product-sku').val(sku);
+                $('#edit-product-modal').removeClass('hidden');
+            });
+
+            $('.close-modal').click(function() {
+                $(this).closest('.modal').addClass('hidden');
+            });
+
+            $('.view-image').click(function() {
+                const imageUrl = $(this).attr('src');
+                $('#large-image').attr('src', imageUrl);
+                $('#image-modal').removeClass('hidden');
+            });
+
+            $('.edit-image-btn').click(function() {
+                const imageId = $(this).data('id');
+                const imageUrl = $(this).data('url');
+                $('#edit-image-id').val(imageId);
+                $('#edit-image-preview').attr('src', imageUrl);
+                $('#edit-image-modal').removeClass('hidden');
+                const image = document.getElementById('edit-image-preview');
+                if (window.cropper) window.cropper.destroy();
+                window.cropper = new Cropper(image, {
+                    aspectRatio: NaN,
+                    viewMode: 1,
+                });
+            });
+
+            $('#enhance-image').click(function() {
+                const image = document.getElementById('edit-image-preview');
+                image.style.filter = 'brightness(1.2) contrast(1.2)';
+            });
+
+            $('#save-image-edits').click(function() {
+                const canvas = window.cropper.getCroppedCanvas();
+                canvas.toBlob(function(blob) {
+                    const formData = new FormData();
+                    formData.append('image_id', $('#edit-image-id').val());
+                    formData.append('image', blob, 'edited-image.png');
+                    formData.append('text_overlay', $('#edit-image-text').val());
+                    $.ajax({
+                        url: '/staff/images/edit',
+                        type: 'POST',
+                        data: formData,
+                        processData: false,
+                        contentType: false,
+                        success: function() {
+                            location.reload();
+                        },
+                        error: function(err) {
+                            console.error('Error editing image:', err);
+                        }
+                    });
+                });
+            });
+        });
+    </script>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200">
+<div class="flex h-screen">
+    <aside class="bg-gray-800 text-white w-64 p-4 hidden md:block">
+        <div class="mb-8">
+            <h2 class="text-2xl font-semibold">Dashboard</h2>
+        </div>
+        <nav>
+            <a href="{{ url_for('staff.dashboard') }}" class="block py-2 px-4 hover:bg-gray-700 rounded">Overview</a>
+            <a href="{{ url_for('staff.manage_users') }}" class="block py-2 px-4 hover:bg-gray-700 rounded">Users</a>
+            <a href="{{ url_for('staff.manage_products') }}" class="block py-2 px-4 hover:bg-gray-700 rounded">Products</a>
+            <a href="{{ url_for('staff.manage_orders') }}" class="block py-2 px-4 hover:bg-gray-700 rounded">Orders</a>
+            <a href="{{ url_for('staff.manage_categories') }}" class="block py-2 px-4 hover:bg-gray-700 rounded">Categories</a>
+            <a href="{{ url_for('staff.manage_settings') }}" class="block py-2 px-4 hover:bg-gray-700 rounded">Settings</a>
+            <a href="{{ url_for('staff.manage_delivery_options') }}" class="block py-2 px-4 hover:bg-gray-700 rounded">Delivery
+                Options</a>
+        </nav>
+    </aside>
+
+    <main class="flex-1 p-4">
+        <header class="flex justify-between items-center mb-4">
+            <h1 class="text-3xl font-semibold">Manage Products</h1>
+            <div class="flex items-center">
+                <input type="checkbox" id="theme-toggle" class="mr-2">
+                <label for="theme-toggle">Dark Mode</label>
+            </div>
+        </header>
+
+        <div class="bg-white rounded shadow p-4 dark:bg-gray-800">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold dark:text-gray-100">Products</h3>
+                <button id="add-product-btn" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Add Product</button>
+            </div>
+            <table class="w-full">
+                <thead>
+                <tr>
+                    <th class="text-left py-2 dark:text-gray-300">Name</th>
+                    <th class="text-left py-2 dark:text-gray-300">Price</th>
+                    <th class="text-left py-2 dark:text-gray-300">Images</th>
+                    <th class="text-left py-2 dark:text-gray-300">Stock</th>
+                    <th class="text-left py-2 dark:text-gray-300">SKU</th>
+                    <th class="text-left py-2 dark:text-gray-300">Rating</th>
+                    <th class="text-left py-2 dark:text-gray-300">Actions</th>
+                </tr>
+                </thead>
+                <!-- Replace the loop in the <tbody> -->
+<tbody class="dark:text-gray-200">
+{% for item in products_with_avg %}
+<tr>
+    <td class="py-2"><a href="{{ url_for('staff.product_details', product_id=item.product.id) }}" class="text-blue-500 hover:underline">{{ item.product.name }}</a></td>
+    <td class="py-2">${{ item.product.price }}</td>
+    <td class="py-2">
+        {% if item.product.images %}
+            {% for image in item.product.images[:3] %}
+                <img src="{{ image.image_url }}" alt="{{ item.product.name }}" class="w-12 h-12 object-cover inline-block mr-2 view-image cursor-pointer">
+            {% endfor %}
+        {% else %}
+            No Images
+        {% endif %}
+    </td>
+    <td class="py-2">{{ item.product.stock_quantity }}</td>
+    <td class="py-2">{{ item.product.sku or 'N/A' }}</td>
+    <td class="py-2">
+        <div class="star-rating">
+            {% for i in range(5) %}
+                <span class="star">{{ '★' if i < item.avg_rating else '☆' }}</span>
+            {% endfor %}
+            ({{ item.num_reviews }} reviews)
+        </div>
+    </td>
+    <td class="py-2">
+        <button class="edit-product-btn text-blue-500 hover:underline mr-2" data-id="{{ item.product.id }}" data-name="{{ item.product.name }}" data-price="{{ item.product.price }}" data-description="{{ item.product.description }}" data-stock="{{ item.product.stock_quantity }}" data-sku="{{ item.product.sku }}">Edit</button>
+        <a href="{{ url_for('staff.delete_product', product_id=item.product.id) }}" class="text-red-500 hover:underline" onclick="return confirm('Are you sure you want to delete this product?')">Delete</a>
+    </td>
+</tr>
+{% endfor %}
+</tbody>
+            </table>
+        </div>
+
+        <!-- Add Product Modal -->
+        <div id="add-product-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden modal">
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-lg w-full max-w-md">
+                <h3 class="text-lg font-semibold mb-4 dark:text-gray-100">Add New Product</h3>
+                <form method="POST" action="{{ url_for('staff.add_product') }}" enctype="multipart/form-data">
+                    <div class="mb-4">
+                        <label for="product-name" class="block text-sm font-medium dark:text-gray-300">Name</label>
+                        <input type="text" name="name" id="product-name" class="w-full border rounded py-2 px-4 dark:bg-gray-600 dark:text-white" required>
+                    </div>
+                    <div class="mb-4">
+                        <label for="product-description" class="block text-sm font-medium dark:text-gray-300">Description</label>
+                        <textarea name="description" id="product-description" class="w-full border rounded py-2 px-4 dark:bg-gray-600 dark:text-white"></textarea>
+                    </div>
+                    <div class="mb-4">
+                        <label for="product-price" class="block text-sm font-medium dark:text-gray-300">Price</label>
+                        <input type="number" step="0.01" name="price" id="product-price" class="w-full border rounded py-2 px-4 dark:bg-gray-600 dark:text-white" required>
+                    </div>
+                    <div class="mb-4">
+                        <label for="product-stock" class="block text-sm font-medium dark:text-gray-300">Stock Quantity</label>
+                        <input type="number" name="stock_quantity" id="product-stock" class="w-full border rounded py-2 px-4 dark:bg-gray-600 dark:text-white" required>
+                    </div>
+                    <div class="mb-4">
+                        <label for="product-sku" class="block text-sm font-medium dark:text-gray-300">SKU</label>
+                        <input type="text" name="sku" id="product-sku" class="w-full border rounded py-2 px-4 dark:bg-gray-600 dark:text-white">
+                    </div>
+                    <div class="mb-4">
+                        <label for="product-category" class="block text-sm font-medium dark:text-gray-300">Category</label>
+                        <select name="category_id" id="product-category" class="w-full border rounded py-2 px-4 dark:bg-gray-600 dark:text-white" required>
+                            {% for category in categories %}
+                            <option value="{{ category.id }}">{{ category.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-4">
+                        <label for="product-images" class="block text-sm font-medium dark:text-gray-300">Images (multiple)</label>
+                        <input type="file" name="images" id="product-images" class="w-full border rounded py-2 px-4 dark:bg-gray-600 dark:text-white" multiple>
+                    </div>
+                    <div class="flex justify-end">
+                        <button type="button" class="close-modal mr-2 text-gray-500 hover:text-gray-700 dark:text-gray-300 dark:hover:text-gray-100">Cancel</button>
+                        <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Add</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Edit Product Modal -->
+        <div id="edit-product-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden modal">
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-lg w-full max-w-md">
+                <h3 class="text-lg font-semibold mb-4 dark:text-gray-100">Edit Product</h3>
+                <form method="POST" action="{{ url_for('staff.edit_product') }}" enctype="multipart/form-data">
+                    <input type="hidden" name="product_id" id="edit-product-id">
+                    <div class="mb-4">
+                        <label for="edit-product-name" class="block text-sm font-medium dark:text-gray-300">Name</label>
+                        <input type="text" name="name" id="edit-product-name" class="w-full border rounded py-2 px-4 dark:bg-gray-600 dark:text-white" required>
+                    </div>
+                    <div class="mb-4">
+                        <label for="edit-product-description" class="block text-sm font-medium dark:text-gray-300">Description</label>
+                        <textarea name="description" id="edit-product-description" class="w-full border rounded py-2 px-4 dark:bg-gray-600 dark:text-white"></textarea>
+                    </div>
+                    <div class="mb-4">
+                        <label for="edit-product-price" class="block text-sm font-medium dark:text-gray-300">Price</label>
+                        <input type="number" step="0.01" name="price" id="edit-product-price" class="w-full border rounded py-2 px-4 dark:bg-gray-600 dark:text-white" required>
+                    </div>
+                    <div class="mb-4">
+                        <label for="edit-product-stock" class="block text-sm font-medium dark:text-gray-300">Stock Quantity</label>
+                        <input type="number" name="stock_quantity" id="edit-product-stock" class="w-full border rounded py-2 px-4 dark:bg-gray-600 dark:text-white" required>
+                    </div>
+                    <div class="mb-4">
+                        <label for="edit-product-sku" class="block text-sm font-medium dark:text-gray-300">SKU</label>
+                        <input type="text" name="sku" id="edit-product-sku" class="w-full border rounded py-2 px-4 dark:bg-gray-600 dark:text-white">
+                    </div>
+                    <div class="mb-4">
+                        <label for="edit-product-category" class="block text-sm font-medium dark:text-gray-300">Category</label>
+                        <select name="category_id" id="edit-product-category" class="w-full border rounded py-2 px-4 dark:bg-gray-600 dark:text-white" required>
+                            {% for category in categories %}
+                            <option value="{{ category.id }}" {{ 'selected' if product and product.category_id == category.id else '' }}>{{ category.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-4">
+                        <label for="edit-product-images" class="block text-sm font-medium dark:text-gray-300">Images (optional, multiple)</label>
+                        <input type="file" name="images" id="edit-product-images" class="w-full border rounded py-2 px-4 dark:bg-gray-600 dark:text-white" multiple>
+                    </div>
+                    <div class="flex justify-end">
+                        <button type="button" class="close-modal mr-2 text-gray-500 hover:text-gray-700 dark:text-gray-300 dark:hover:text-gray-100">Cancel</button>
+                        <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Image Modal (Large View) -->
+        <div id="image-modal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center hidden modal">
+            <div class="relative">
+                <img id="large-image" src="" alt="Large Image" class="max-w-full max-h-screen">
+                <button class="absolute top-2 right-2 text-white text-2xl" onclick="$('#image-modal').addClass('hidden')">×</button>
+            </div>
+        </div>
+
+        <!-- Edit Image Modal -->
+        <div id="edit-image-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden modal">
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-lg w-full max-w-3xl">
+                <h3 class="text-lg font-semibold mb-4 dark:text-gray-100">Edit Image</h3>
+                <input type="hidden" id="edit-image-id">
+                <img id="edit-image-preview" src="" alt="Image Preview" class="mb-4">
+                <div class="mb-4">
+                    <label for="edit-image-text" class="block text-sm font-medium dark:text-gray-300">Add Text Overlay</label>
+                    <input type="text" id="edit-image-text" class="w-full border rounded py-2 px-4 dark:bg-gray-600 dark:text-white">
+                </div>
+                <div class="flex justify-between mb-4">
+                    <button id="enhance-image" class="bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded">Enhance</button>
+                    <button id="save-image-edits" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">Save Edits</button>
+                    <button type="button" class="close-modal text-gray-500 hover:text-gray-700 dark:text-gray-300 dark:hover:text-gray-100">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+</body>
+</html>

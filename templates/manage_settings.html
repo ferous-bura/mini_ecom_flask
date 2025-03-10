@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Settings</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            const theme = localStorage.getItem('theme');
+            if (theme === 'dark') {
+                $('html').addClass('dark');
+                $('#theme-toggle').prop('checked', true);
+            }
+
+            $('#theme-toggle').change(function() {
+                if (this.checked) {
+                    $('html').addClass('dark');
+                    localStorage.setItem('theme', 'dark');
+                } else {
+                    $('html').removeClass('dark');
+                    localStorage.setItem('theme', 'light');
+                }
+            });
+        });
+    </script>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200">
+<div class="flex h-screen">
+    <aside class="bg-gray-800 text-white w-64 p-4 hidden md:block">
+        <div class="mb-8">
+            <h2 class="text-2xl font-semibold">Dashboard</h2>
+        </div>
+        <nav>
+            <a href="{{ url_for('staff.dashboard') }}" class="block py-2 px-4 hover:bg-gray-700 rounded">Overview</a>
+            <a href="{{ url_for('staff.manage_users') }}" class="block py-2 px-4 hover:bg-gray-700 rounded">Users</a>
+            <a href="{{ url_for('staff.manage_products') }}"
+               class="block py-2 px-4 hover:bg-gray-700 rounded">Products</a>
+            <a href="{{ url_for('staff.manage_orders') }}" class="block py-2 px-4 hover:bg-gray-700 rounded">Orders</a>
+            <a href="{{ url_for('staff.manage_categories') }}" class="block py-2 px-4 hover:bg-gray-700 rounded">Categories</a>
+            <a href="{{ url_for('staff.manage_settings') }}"
+               class="block py-2 px-4 hover:bg-gray-700 rounded">Settings</a>
+            <a href="{{ url_for('staff.manage_delivery_options') }}" class="block py-2 px-4 hover:bg-gray-700 rounded">Delivery
+                Options</a>
+        </nav>
+    </aside>
+
+    <main class="flex-1 p-4">
+        <header class="flex justify-between items-center mb-4">
+            <h1 class="text-3xl font-semibold">Manage Settings</h1>
+            <div class="flex items-center">
+                <input type="checkbox" id="theme-toggle" class="mr-2">
+                <label for="theme-toggle">Dark Mode</label>
+            </div>
+        </header>
+
+        <div class="bg-white rounded shadow p-4 dark:bg-gray-800">
+            <h3 class="text-lg font-semibold mb-4 dark:text-gray-100">Site Settings</h3>
+            <form method="POST" action="{{ url_for('staff.update_settings') }}">
+                <div class="mb-4">
+                    <label for="site-name" class="block text-sm font-medium dark:text-gray-300">Site Name</label>
+                    <input type="text" name="site_name" id="site-name"
+                           value="{{ settings.site_name if settings else 'My Ecommerce Site' }}"
+                           class="w-full border rounded py-2 px-4 dark:bg-gray-600 dark:text-white" required>
+                </div>
+                <div class="mb-4">
+                    <label for="contact-email" class="block text-sm font-medium dark:text-gray-300">Contact
+                        Email</label>
+                    <input type="email" name="contact_email" id="contact-email"
+                           value="{{ settings.contact_email if settings else 'contact@example.com' }}"
+                           class="w-full border rounded py-2 px-4 dark:bg-gray-600 dark:text-white" required>
+                </div>
+                <div class="flex justify-end">
+                    <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                        Save Settings
+                    </button>
+                </div>
+            </form>
+        </div>
+    </main>
+</div>
+</body>
+</html>
