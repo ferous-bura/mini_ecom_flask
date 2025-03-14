@@ -1,6 +1,6 @@
-from flask import Flask, request, jsonify, url_for, redirect
-from flask_sqlalchemy import SQLAlchemy
+from flask import Flask, url_for, current_app
 from flask_mail import Mail, Message
+from flask_sqlalchemy import SQLAlchemy
 from itsdangerous import URLSafeTimedSerializer
 
 app = Flask(__name__)

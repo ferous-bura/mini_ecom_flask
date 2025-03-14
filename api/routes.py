@@ -1,13 +1,12 @@
-import qrcode
-import io
 import base64
+import io
 import uuid
-from flask import jsonify, request, url_for, render_template, current_app, Blueprint
-from flask import jsonify, session
 
-from .helpers import token_required, copy_token_to_clipboard
+import qrcode
+from flask import jsonify, request, url_for, render_template, current_app, Blueprint
 
 from . import db
+from .helpers import token_required, copy_token_to_clipboard
 from .models import User, Product, CartItem, OrderItem, Order
 
 api_routes = Blueprint('routes', __name__)
@@ -19,6 +18,7 @@ def generate_qr_code(url):
     qr.save(img_io, format='PNG')
     img_io.seek(0)
     return base64.b64encode(img_io.getvalue()).decode()
+
 
 @api_routes.route('/', methods=['GET'])
 def homepage():
@@ -33,17 +33,25 @@ def homepage():
     # Render the template
     return render_template('index.html', qr_code_data=qr_code_data, urls=urls)
 
+
 @api_routes.route('/products', methods=['GET'])
 def get_products():
     products = [
-        {"quantity": 1, "product_id": 1, "name": "Item 1", "price": 100.0, "image_url": url_for('static', filename='images/item1.jpg', _external=True)},
-        {"quantity": 1, "product_id": 2, "name": "Item 2", "price": 208.0, "image_url": url_for('static', filename='images/item2.jpg', _external=True)},
-        {"quantity": 1, "product_id": 3, "name": "Item 3", "price": 6710.0, "image_url": url_for('static', filename='images/item1.jpg', _external=True)},
-        {"quantity": 1, "product_id": 4, "name": "Item 4", "price": 230.0, "image_url": url_for('static', filename='images/item2.jpg', _external=True)},
-        {"quantity": 1, "product_id": 5, "name": "Item 5", "price": 160.0, "image_url": "https://placehold.co/600x400.png"},
-        {"quantity": 1, "product_id": 6, "name": "Item 6", "price": 520.0, "image_url": "https://placehold.co/600x400.png"},
+        {"quantity": 1, "product_id": 1, "name": "Item 1", "price": 100.0,
+         "image_url": url_for('static', filename='images/item1.jpg', _external=True)},
+        {"quantity": 1, "product_id": 2, "name": "Item 2", "price": 208.0,
+         "image_url": url_for('static', filename='images/item2.jpg', _external=True)},
+        {"quantity": 1, "product_id": 3, "name": "Item 3", "price": 6710.0,
+         "image_url": url_for('static', filename='images/item1.jpg', _external=True)},
+        {"quantity": 1, "product_id": 4, "name": "Item 4", "price": 230.0,
+         "image_url": url_for('static', filename='images/item2.jpg', _external=True)},
+        {"quantity": 1, "product_id": 5, "name": "Item 5", "price": 160.0,
+         "image_url": "https://placehold.co/600x400.png"},
+        {"quantity": 1, "product_id": 6, "name": "Item 6", "price": 520.0,
+         "image_url": "https://placehold.co/600x400.png"},
     ]
     return jsonify(products)
+
 
 @api_routes.route('/cart', methods=['POST'])
 @token_required
@@ -80,6 +88,7 @@ def add_to_cart(current_user):
 
     return jsonify({"message": f"Added {quantity} of {product.name} to your cart."}), 200
 
+
 @api_routes.route('/checkout', methods=['POST'])
 @token_required
 def checkout(current_user):
@@ -110,6 +119,7 @@ def checkout(current_user):
         "message": "Order successfully placed.",
         "order_id": new_order.id
     }), 200
+
 
 @api_routes.route('/register', methods=['POST'])
 def register():
