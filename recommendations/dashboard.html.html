@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin Dashboard</title>
+</head>
+<body>
+    <h1>Admin Dashboard</h1>
+    <p>Total Orders: {{ total_orders }}</p>
+    <p>Total Users: {{ total_users }}</p>
+    <h2>Recent Orders</h2>
+    <ul>
+        {% for order in recent_orders %}
+            <li>Order ID: {{ order.id }}, Created At: {{ order.created_at }}</li>
+        {% endfor %}
+    </ul>
+</body>
+</html>
