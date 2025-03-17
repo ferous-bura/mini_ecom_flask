@@ -1,10 +1,26 @@
 # helpers.py
+import datetime
+import os
 from functools import wraps
+
+import jwt
 from flask import request, jsonify
+
+SECRET_KEY = os.getenv('SECRET_KEY')  # Use environment variable
 
 import pyperclip
 from .models import User
-from api import db
+
+
+# Helper function to generate JWT (reuse in login as well)
+def generate_token(user):
+    payload = {
+        'user_id': user.id,
+        'exp': datetime.datetime.utcnow() + datetime.timedelta(days=7),  # expires in 7 days
+        'iat': datetime.datetime.utcnow()
+    }
+    token = jwt.encode(payload, SECRET_KEY, algorithm='HS256')
+    return token
 
 
 def token_required(f):
@@ -24,7 +40,6 @@ def token_required(f):
         return f(user, *args, **kwargs)
 
     return decorated
-
 
 
 def copy_token_to_clipboard(token):

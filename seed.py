@@ -37,7 +37,7 @@ def seed_users():
         {"full_name": "David Lee", "email": "david.lee@example.com", "password": "password123", "confirmed": True},
         {"full_name": "Laura Adams", "email": "laura.adams@example.com", "password": "password123", "confirmed": False},
         {"full_name": "Chris Evans", "email": "chris.evans@example.com", "password": "password123", "confirmed": True},
-        {"full_name": "Anna Taylor", "email": "anna.taylor@example.com", "password": "password123", "confirmed": True}
+        {"full_name": "Biruh Alemayehu", "email": "b@b.b", "password": "b", "confirmed": True}
     ]
 
     for user_data in users:

@@ -2,7 +2,8 @@
 
 # Mini E-Commerce Flask Application
 
-This project is a mini e-commerce application built using Flask. It allows users to browse products, place orders, and interact with a Telegram bot for order processing and updates.
+This project is a mini e-commerce application built using Flask. It allows users to browse products, place orders, and
+interact with a Telegram bot for order processing and updates.
 
 ## Project Structure
 
@@ -63,3 +64,6 @@ mini_ecom_flask
 ## License
 
 This project is licensed under the MIT License.
+
+uninstall all
+pip freeze | grep -v "^-e" | xargs pip uninstall -y

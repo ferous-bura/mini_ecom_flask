@@ -1,15 +1,17 @@
 import base64
 import io
+import os
 import uuid
 
 import qrcode
 from flask import jsonify, request, url_for, render_template, current_app, Blueprint
 
 from . import db
-from .helpers import token_required, copy_token_to_clipboard
-from .models import User, Product, CartItem, OrderItem, Order
+from .helpers import token_required, copy_token_to_clipboard, generate_token
+from .models import User, Product, CartItem, OrderItem, Order, Address
 
 api_routes = Blueprint('routes', __name__)
+SECRET_KEY = os.getenv('SECRET_KEY', 'default-secret-key')
 
 
 def generate_qr_code(url):
@@ -159,7 +161,7 @@ def login():
     user = User.query.filter_by(email=data['email']).first()
 
     if user and user.check_password(data['password']):
-        user.token = str(uuid.uuid4())  # Generate fresh login token each time user logs in
+        user.token = generate_token(user)
         db.session.commit()
         copy_token_to_clipboard(user.token)  # dynamically copy token to clipboard explicitly
 
@@ -184,7 +186,7 @@ def get_cart_items(current_user):
     for item in cart_items:
         product = Product.query.get(item.product_id)
         items_list.append({
-            "image_url": product.imageUrl,
+            "image_url": product.image_url,
             "product_id": product.id,
             "name": product.name,
             "quantity": item.quantity,
@@ -194,3 +196,83 @@ def get_cart_items(current_user):
     print(f'items_list {items_list}')
 
     return jsonify(items_list), 200
+
+
+@api_routes.route('/change-password', methods=['POST'])
+@token_required
+def change_password(current_user):
+    data = request.json
+    current_password = data.get('current_password')
+    new_password = data.get('new_password')
+
+    if not current_password or not new_password:
+        return jsonify({"success": False, "message": "Missing current or new password."}), 400
+
+    if not current_user.check_password(current_password):  # <-- Correct method usage
+        return jsonify({"success": False, "message": "Current password is incorrect."}), 400
+
+    current_user.set_password(new_password)  # Use set_password
+
+    try:
+        db.session.commit()
+        token = generate_token(current_user)
+
+        return jsonify({
+            "success": True,
+            "token": token,
+            "message": "Password changed successfully and token refreshed."
+        }), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "message": "Failed to update password."}), 500
+
+
+@api_routes.route('/addresses', methods=['POST'])
+@token_required
+def add_address(current_user):
+    data = request.get_json()
+    address = data.get('address')
+
+    if not address:
+        return jsonify({"success": False, "message": "Address is required!"}), 400
+
+    new_address = Address(address=address, user_id=current_user.id)
+    db.session.add(new_address)
+
+    try:
+        db.session.commit()
+        return jsonify({"success": True, "message": "Address added successfully!"}), 200
+    except:
+        db.session.rollback()
+        return jsonify({"success": False, "message": "Failed to add address."}), 500
+
+
+@api_routes.route('/addresses', methods=['DELETE'])
+@token_required
+def remove_address(current_user):
+    data = request.get_json()
+    address = data.get('address')
+
+    address = Address.query.filter_by(user_id=current_user.id, address=address).first()
+
+    if not address:
+        return jsonify({"success": False, "message": "Address not found!"}), 404
+
+    db.session.delete(address)
+
+    try:
+        db.session.commit()
+        return jsonify({"success": True, "message": "Address removed successfully!"}), 200
+    except:
+        db.session.rollback()
+        return jsonify({"success": False, "message": "Failed to remove address."}), 500
+
+
+@api_routes.route('/addresses', methods=['GET'])
+@token_required
+def get_addresses(current_user):
+    addresses = Address.query.filter_by(user_id=current_user.id).all()
+    addresses_list = [address.address for address in addresses]
+
+    return jsonify({"success": True, "addresses": addresses_list}), 200
+
