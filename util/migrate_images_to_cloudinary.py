@@ -3,8 +3,8 @@ import os
 
 import cloudinary.uploader
 
-from api import create_app, db
-from api.models import ProductImage
+from app import create_app, db
+from app.models import ProductImage
 
 # Configure Cloudinary
 cloudinary.config(

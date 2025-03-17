@@ -1,7 +1,9 @@
 # recommendations/recommendations.py
 import pandas as pd
 from sklearn.metrics.pairwise import cosine_similarity
-from api.models import User, Product, OrderItem
+
+from app.models import User, Product, OrderItem
+
 
 def get_recommendations(user_id, top_n=5):
     """
@@ -26,11 +28,13 @@ def get_recommendations(user_id, top_n=5):
 
     # Calculate cosine similarity between users (or items)
     # In this simplified example, we're using item similarity
-    item_similarity = cosine_similarity(pd.DataFrame([p.id for p in all_products]), pd.DataFrame([p.id for p in all_products]))
-    item_similarity_df = pd.DataFrame(item_similarity, index=[p.name for p in all_products], columns=[p.name for p in all_products])
+    item_similarity = cosine_similarity(pd.DataFrame([p.id for p in all_products]),
+                                        pd.DataFrame([p.id for p in all_products]))
+    item_similarity_df = pd.DataFrame(item_similarity, index=[p.name for p in all_products],
+                                      columns=[p.name for p in all_products])
 
     # Get recommendations
-    recommendations = item_similarity_df[all_products[0].name].sort_values(ascending=False)[1:top_n+1]
+    recommendations = item_similarity_df[all_products[0].name].sort_values(ascending=False)[1:top_n + 1]
     recommended_product_ids = recommendations.index.tolist()
 
     # Return recommended products

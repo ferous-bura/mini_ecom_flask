@@ -1,8 +1,9 @@
-# dashboard/routes.py
+# dashboard/product.py
 from flask import render_template
+
+from app.models import Order, User
 from . import dashboard
-from api.models import Order, Product, User
-from datetime import datetime
+
 
 @dashboard.route('/dashboard')
 def dashboard_index():
@@ -13,4 +14,5 @@ def dashboard_index():
     # Example: Get top 5 most viewed products (requires analytics data)
     # top_products = get_top_viewed_products(5)
 
-    return render_template('admin_dashboard.html', total_orders=total_orders, total_users=total_users, recent_orders=recent_orders)
+    return render_template('admin_dashboard.html', total_orders=total_orders, total_users=total_users,
+                           recent_orders=recent_orders)

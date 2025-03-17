@@ -1,5 +1,6 @@
-# routes.py
+# product.py
 from .recommendations.recommendations import get_recommendations
+
 
 @api_routes.route('/recommendations/<int:user_id>', methods=['GET'])
 @token_required
@@ -14,5 +15,3 @@ def get_user_recommendations(user_id):
             "image_url": product.imageUrl
         })
     return jsonify(recommendation_list), 200
-
-

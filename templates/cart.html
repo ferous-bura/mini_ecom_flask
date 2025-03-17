@@ -1,0 +1,15 @@
+<!-- templates/cart.html -->
+<h1>Your Cart</h1>
+<ul>
+    {% for item in cart_items %}
+        <li>{{ item.product.name }} - {{ item.quantity }} x ${{ item.product.price }}</li>
+    {% endfor %}
+</ul>
+<form action="/checkout" method="POST">
+    <select name="delivery_option_id">
+        {% for option in delivery_options %}
+            <option value="{{ option.id }}">{{ option.name }}</option>
+        {% endfor %}
+    </select>
+    <button type="submit">Checkout</button>
+</form>

@@ -1,35 +1,33 @@
-import io
 import os
+from datetime import datetime
 
-from PIL import Image
-from flask import Blueprint, flash, render_template, request, redirect, url_for, current_app, jsonify, \
-    send_from_directory
+from flask import flash, render_template, request, redirect, url_for, current_app, jsonify, \
+    send_from_directory, Blueprint
 from werkzeug.utils import secure_filename
 
+from util.utils import UPLOAD_FOLDER, calculate_average_rating, allowed_file
 from . import db
-from .models import User, Product, Category, Order, OrderItem, Settings, ProductImage, ProductRating, DeliveryOption
+from .models import User, Product, Category, Order, OrderItem, Settings, ProductImage, ProductRating, DeliveryOption, \
+    Notification
 
-# Use an absolute path relative to the project root
-# UPLOAD_FOLDER = os.path.join(current_app.root_path, '..', 'uploads', 'images')
-# os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'uploads', 'images')
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-staff = Blueprint('staff', __name__)
+staff_routes = Blueprint('staff', __name__)
 
 
-@staff.route('/uploads/<path:filename>')
+@staff_routes.route('<filename>')
 def serve_uploaded_file(filename):
-    return send_from_directory(os.path.join(current_app.root_path, 'uploads'), filename)
+    print(f'file {filename}')
+    # return send_from_directory(os.path.join(current_app.root_path), filename)
+    return send_from_directory(UPLOAD_FOLDER, filename)
 
 
 # Dashboard Route
-@staff.route('/')
+@staff_routes.route('/')
 def dashboard():
     return render_template('admin_dashboard.html')
 
 
 # API Endpoints for Dashboard Data
-@staff.route('/dashboard/stats')
+@staff_routes.route('/stats')
 def get_dashboard_stats():
     total_users = User.query.count()
     active_users = User.query.filter_by(confirmed=True).count()
@@ -52,14 +50,14 @@ def get_dashboard_stats():
     })
 
 
-@staff.route('/dashboard/recent_users')
+@staff_routes.route('/recent_users')
 def get_recent_users():
     recent_users = User.query.order_by(User.id.desc()).limit(5).all()
     users_data = [{'name': user.full_name, 'email': user.email, 'joined': user.id} for user in recent_users]
     return jsonify(users_data)
 
 
-@staff.route('/dashboard/top_products')
+@staff_routes.route('/top_products')
 def get_top_products():
     # Simplified top products based on order items (could be enhanced with actual sales data)
     top_products = db.session.query(Product, db.func.count(OrderItem.product_id).label('sales_count')) \
@@ -72,13 +70,13 @@ def get_top_products():
 
 
 # Users CRUD
-@staff.route('/users')
+@staff_routes.route('/users')
 def manage_users():
     users = User.query.all()
     return render_template('manage_users.html', users=users)
 
 
-@staff.route('/users/add', methods=['POST'])
+@staff_routes.route('/users/add', methods=['POST'])
 def add_user():
     name = request.form.get('name')
     email = request.form.get('email')
@@ -96,7 +94,7 @@ def add_user():
     return redirect(url_for('staff.manage_users'))
 
 
-@staff.route('/users/edit', methods=['POST'])
+@staff_routes.route('/users/edit', methods=['POST'])
 def edit_user():
     user_id = request.form.get('user_id')
     name = request.form.get('name')
@@ -110,7 +108,7 @@ def edit_user():
     return redirect(url_for('staff.manage_users'))
 
 
-@staff.route('/users/delete/<int:user_id>')
+@staff_routes.route('/users/delete/<int:user_id>')
 def delete_user(user_id):
     user = User.query.get_or_404(user_id)
     db.session.delete(user)
@@ -119,19 +117,15 @@ def delete_user(user_id):
     return redirect(url_for('staff.manage_users'))
 
 
-# Helper function to calculate average rating
-def calculate_average_rating(ratings):
-    if not ratings:
-        return 0
-    total = sum(rating.rating for rating in ratings)
-    return total / len(ratings)
-
-
-# Products CRUD
-@staff.route('/products')
+@staff_routes.route('/products')
 def manage_products():
-    products = Product.query.all()
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 10, type=int)  # You can adjust per_page as needed
+
+    pagination = Product.query.paginate(page=page, per_page=per_page, error_out=False)
+    products = pagination.items
     categories = Category.query.all()
+
     products_with_avg = []
     for product in products:
         avg_rating = calculate_average_rating(product.ratings)
@@ -140,14 +134,14 @@ def manage_products():
             'avg_rating': avg_rating,
             'num_reviews': len(product.ratings)
         })
-    return render_template('manage_products.html', products_with_avg=products_with_avg, categories=categories)
+
+    return render_template('manage_products.html',
+                           products_with_avg=products_with_avg,
+                           categories=categories,
+                           pagination=pagination)
 
 
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in {'png', 'jpg', 'jpeg', 'gif'}
-
-
-@staff.route('/products/add', methods=['POST'])
+@staff_routes.route('/products/add', methods=['POST'])
 def add_product():
     name = request.form.get('name')
     description = request.form.get('description')
@@ -180,7 +174,7 @@ def add_product():
             filename = secure_filename(image.filename)
             image_path = os.path.join(current_app.root_path, UPLOAD_FOLDER, filename)
             image.save(image_path)
-            image_url = url_for('staff.serve_uploaded_file', filename=f'images/{filename}', _external=True)
+            image_url = url_for('staff.serve_uploaded_file', filename=f'{filename}', _external=True)
             product_image = ProductImage(product_id=product.id, image_url=image_url)
             db.session.add(product_image)
 
@@ -189,7 +183,7 @@ def add_product():
     return redirect(url_for('staff.manage_products'))
 
 
-@staff.route('/products/edit', methods=['POST'])
+@staff_routes.route('/products/edit', methods=['POST'])
 def edit_product():
     product_id = request.form.get('product_id')
     name = request.form.get('name')
@@ -213,7 +207,7 @@ def edit_product():
             filename = secure_filename(image.filename)
             image_path = os.path.join(current_app.root_path, UPLOAD_FOLDER, filename)
             image.save(image_path)
-            image_url = url_for('staff.serve_uploaded_file', filename=f'images/{filename}', _external=True)
+            image_url = url_for('staff.serve_uploaded_file', filename=f'{filename}', _external=True)
             print(f'image url: {image_url}')
             product_image = ProductImage(product_id=product.id, image_url=image_url)
             db.session.add(product_image)
@@ -223,32 +217,34 @@ def edit_product():
     return redirect(url_for('staff.manage_products'))
 
 
-def compress_image(image):
-    img = Image.open(image)
-    img = img.convert('RGB')
-    output = io.BytesIO()
-    img.save(output, format='JPEG', quality=85)
-    output.seek(0)
-    return output
-
-
-@staff.route('/products/delete/<int:product_id>')
+@staff_routes.route('/products/delete/<int:product_id>', methods=['GET', 'POST'])
 def delete_product(product_id):
     product = Product.query.get_or_404(product_id)
-    # Delete associated image files from disk
-    for image in product.images:
-        filename = image.image_url.split('/')[-1]
-        image_path = os.path.join(current_app.root_path, UPLOAD_FOLDER, filename)
-        if os.path.exists(image_path):
-            os.remove(image_path)
-    # Delete the product (images will be deleted automatically due to CASCADE)
-    db.session.delete(product)
-    db.session.commit()
-    flash('Product deleted successfully!', 'success')
+
+    try:
+        # First delete associated images physically & DB records
+        for image in product.images:
+            image_path = os.path.join(UPLOAD_FOLDER, image.image_url)
+            if os.path.exists(image_path):
+                os.remove(image_path)
+            db.session.delete(image)  # Delete image record from DB explicitly
+
+        # Commit images deletion first
+        db.session.commit()
+
+        # Now, delete the product itself
+        db.session.delete(product)
+        db.session.commit()
+
+        flash('Product and associated images successfully deleted.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'An error occurred: {str(e)}', 'danger')
+
     return redirect(url_for('staff.manage_products'))
 
 
-@staff.route('/products/<int:product_id>')
+@staff_routes.route('/products/<int:product_id>')
 def product_details(product_id):
     product = Product.query.get_or_404(product_id)
     product.images = sorted(product.images, key=lambda x: x.order)  # Sort images by order
@@ -258,7 +254,7 @@ def product_details(product_id):
                            num_reviews=len(product.ratings))
 
 
-@staff.route('/images/edit', methods=['POST'])
+@staff_routes.route('/images/edit', methods=['POST'])
 def edit_image():
     image_id = request.form.get('image_id')
     image_file = request.files.get('image')
@@ -269,7 +265,7 @@ def edit_image():
         filename = secure_filename(image_file.filename)
         image_path = os.path.join(current_app.root_path, UPLOAD_FOLDER, filename)
         image_file.save(image_path)
-        product_image.image_url = url_for('staff.serve_uploaded_file', filename=f'images/{filename}', _external=True)
+        image_url = url_for('staff.serve_uploaded_file', filename=f'{filename}', _external=True)
     product_image.text_overlay = text_overlay
     product_image.edited = True
     db.session.commit()
@@ -277,13 +273,13 @@ def edit_image():
 
 
 # Categories CRUD
-@staff.route('/categories')
+@staff_routes.route('/categories')
 def manage_categories():
     categories = Category.query.all()
     return render_template('manage_categories.html', categories=categories)
 
 
-@staff.route('/categories/add', methods=['POST'])
+@staff_routes.route('/categories/add', methods=['POST'])
 def add_category():
     name = request.form.get('category')
     if not name:
@@ -296,7 +292,7 @@ def add_category():
     return redirect(url_for('staff.manage_categories'))
 
 
-@staff.route('/categories/edit', methods=['POST'])
+@staff_routes.route('/categories/edit', methods=['POST'])
 def edit_category():
     category_id = request.form.get('category_id')
     name = request.form.get('category')
@@ -307,7 +303,7 @@ def edit_category():
     return redirect(url_for('staff.manage_categories'))
 
 
-@staff.route('/categories/delete/<int:category_id>')
+@staff_routes.route('/categories/delete/<int:category_id>')
 def delete_category(category_id):
     category = Category.query.get_or_404(category_id)
     db.session.delete(category)
@@ -317,14 +313,18 @@ def delete_category(category_id):
 
 
 # Orders CRUD with Delivery and Payment
-@staff.route('/orders')
+@staff_routes.route('/orders')
 def manage_orders():
+    # OrderItem.query.delete()
+    # Order.query.delete()
+    # db.session.commit()
+
     orders = Order.query.all()
     delivery_options = DeliveryOption.query.all()
     return render_template('manage_orders.html', orders=orders, delivery_options=delivery_options)
 
 
-@staff.route('/orders/approve/<int:order_id>')
+@staff_routes.route('/orders/approve/<int:order_id>')
 def approve_order(order_id):
     order = Order.query.get_or_404(order_id)
     order.approved = True
@@ -333,7 +333,7 @@ def approve_order(order_id):
     return redirect(url_for('staff.manage_orders'))
 
 
-@staff.route('/orders/delete/<int:order_id>')
+@staff_routes.route('/orders/delete/<int:order_id>')
 def delete_order(order_id):
     order = Order.query.get_or_404(order_id)
     db.session.delete(order)
@@ -342,20 +342,7 @@ def delete_order(order_id):
     return redirect(url_for('staff.manage_orders'))
 
 
-@staff.route('/orders/update_payment/<int:order_id>', methods=['POST'])
-def update_payment_status(order_id):
-    order = Order.query.get_or_404(order_id)
-    payment_status = request.form.get('payment_status')
-    if payment_status in ['Pending', 'Paid', 'Failed']:
-        order.payment_status = payment_status
-        db.session.commit()
-        flash(f'Payment status updated to {payment_status}.', 'success')
-    else:
-        flash('Invalid payment status.', 'error')
-    return redirect(url_for('staff.manage_orders'))
-
-
-@staff.route('/orders/update_delivery/<int:order_id>', methods=['POST'])
+@staff_routes.route('/orders/update_delivery/<int:order_id>', methods=['POST'])
 def update_delivery_option(order_id):
     order = Order.query.get_or_404(order_id)
     delivery_option_id = request.form.get('delivery_option_id')
@@ -372,13 +359,13 @@ def update_delivery_option(order_id):
 
 
 # Delivery Options Management
-@staff.route('/delivery_options')
+@staff_routes.route('/delivery_options')
 def manage_delivery_options():
     delivery_options = DeliveryOption.query.all()
     return render_template('manage_delivery_options.html', delivery_options=delivery_options)
 
 
-@staff.route('/delivery_options/add', methods=['POST'])
+@staff_routes.route('/delivery_options/add', methods=['POST'])
 def add_delivery_option():
     name = request.form.get('name')
     base_fee = request.form.get('base_fee')
@@ -393,7 +380,7 @@ def add_delivery_option():
     return redirect(url_for('staff.manage_delivery_options'))
 
 
-@staff.route('/delivery_options/edit', methods=['POST'])
+@staff_routes.route('/delivery_options/edit', methods=['POST'])
 def edit_delivery_option():
     delivery_id = request.form.get('delivery_id')
     name = request.form.get('name')
@@ -408,7 +395,7 @@ def edit_delivery_option():
     return redirect(url_for('staff.manage_delivery_options'))
 
 
-@staff.route('/delivery_options/delete/<int:delivery_id>')
+@staff_routes.route('/delivery_options/delete/<int:delivery_id>')
 def delete_delivery_option(delivery_id):
     delivery_option = DeliveryOption.query.get_or_404(delivery_id)
     db.session.delete(delivery_option)
@@ -418,7 +405,7 @@ def delete_delivery_option(delivery_id):
 
 
 # Settings CRUD
-@staff.route('/settings', methods=['GET', 'POST'])
+@staff_routes.route('/settings', methods=['GET', 'POST'])
 def manage_settings():
     settings = Settings.query.first()
     if not settings:
@@ -434,7 +421,7 @@ def manage_settings():
     return render_template('manage_settings.html', settings=settings)
 
 
-@staff.route('/settings/update', methods=['POST'])
+@staff_routes.route('/settings/update', methods=['POST'])
 def update_settings():
     settings = Settings.query.first()
     if not settings:
@@ -459,7 +446,7 @@ def update_settings():
     return redirect(url_for('staff.manage_settings'))
 
 
-@staff.route('/products/<int:product_id>/reorder_images', methods=['POST'])
+@staff_routes.route('/products/<int:product_id>/reorder_images', methods=['POST'])
 def reorder_images(product_id):
     product = Product.query.get_or_404(product_id)
     image_order = request.json.get('image_order', [])
@@ -474,7 +461,7 @@ def reorder_images(product_id):
     return jsonify({'status': 'success'})
 
 
-@staff.route('/ratings/<int:rating_id>/reply', methods=['POST'])
+@staff_routes.route('/ratings/<int:rating_id>/reply', methods=['POST'])
 def add_reply(rating_id):
     parent_rating = ProductRating.query.get_or_404(rating_id)
     comment = request.form.get('comment')
@@ -496,7 +483,7 @@ def add_reply(rating_id):
     return redirect(url_for('staff.product_details', product_id=parent_rating.product_id))
 
 
-@staff.route('/ratings/<int:rating_id>/delete')
+@staff_routes.route('/ratings/<int:rating_id>/delete')
 def delete_rating(rating_id):
     rating = ProductRating.query.get_or_404(rating_id)
     product_id = rating.product_id
@@ -506,12 +493,12 @@ def delete_rating(rating_id):
     return redirect(url_for('staff.product_details', product_id=product_id))
 
 
-@staff.route('/images/<int:image_id>/delete')
+@staff_routes.route('/images/<int:image_id>/delete')
 def delete_image(image_id):
     image = ProductImage.query.get_or_404(image_id)
     product_id = image.product_id
     filename = image.image_url.split('/')[-1]
-    image_path = os.path.join(current_app.root_path, UPLOAD_FOLDER, filename)
+    image_path = os.path.join(UPLOAD_FOLDER, filename)
     if os.path.exists(image_path):
         os.remove(image_path)
     db.session.delete(image)
@@ -520,7 +507,7 @@ def delete_image(image_id):
     return redirect(url_for('staff.product_details', product_id=product_id))
 
 
-@staff.route('/products/<int:product_id>/duplicate')
+@staff_routes.route('/products/<int:product_id>/duplicate')
 def duplicate_product(product_id):
     product = Product.query.get_or_404(product_id)
     new_product = Product(
@@ -548,3 +535,33 @@ def duplicate_product(product_id):
     db.session.commit()
     flash('Product duplicated successfully!', 'success')
     return redirect(url_for('staff.manage_products'))
+
+
+# payment status update
+@staff_routes.route('/orders/update_payment/<int:order_id>', methods=['POST'])
+def update_payment_status(order_id):
+    order = Order.query.get_or_404(order_id)
+    payment_status = request.form.get('payment_status')
+    if payment_status in ['Pending', 'Paid', 'Failed']:
+        order.payment_status = payment_status
+        if payment_status == 'Paid':
+            notification = Notification(
+                user_id=order.user_id,
+                type="payment_success",
+                title="Payment Successful",
+                message=f"Payment for Order #{order_id} completed successfully!",
+                data={
+                    "order_id": order_id,
+                    "total_amount": order.total_amount,
+                    "payment_status": payment_status,
+                    "timestamp": datetime.utcnow().isoformat()
+                },
+                is_read=False,
+                is_sent=False
+            )
+            db.session.add(notification)
+        db.session.commit()
+        flash(f'Payment status updated to {payment_status}.', 'success')
+    else:
+        flash('Invalid payment status.', 'error')
+    return redirect(url_for('staff.manage_orders'))

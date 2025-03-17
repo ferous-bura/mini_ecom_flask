@@ -6,7 +6,7 @@ from itsdangerous import URLSafeTimedSerializer
 app = Flask(__name__)
 
 # Database configuration
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///app.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///bot_api.db'
 app.config['SECRET_KEY'] = 'your_secret_key_here'
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'  # Replace with your email provider's SMTP server
 app.config['MAIL_PORT'] = 587
@@ -19,8 +19,7 @@ mail = Mail(app)
 
 # Token generator for confirmation links
 serializer = URLSafeTimedSerializer(app.config['SECRET_KEY'])
-
-serializer = URLSafeTimedSerializer('your-unique-secret-key')
+# serializer = URLSafeTimedSerializer('your-unique-secret-key')
 
 
 def send_confirmation_email(user):

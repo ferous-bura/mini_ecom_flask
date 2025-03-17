@@ -32,8 +32,4 @@ def remove_background(image_path, output_path):
 
 
 # Example usage
-remove_background('item1.jpg', 'output_image.png')
-
-
-
-
+remove_background('../../uploads/default.jpg', 'output_image.png')
