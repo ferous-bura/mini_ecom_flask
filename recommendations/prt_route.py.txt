@@ -1,0 +1,64 @@
+from api import db
+from api.models import Product, Category, Analytics
+from flask import Blueprint, jsonify, url_for
+import random
+
+api_routes = Blueprint('routes', __name__)
+
+# Helper: Get analytics-based product scores
+def get_product_scores(category_id=None):
+    analytics = Analytics.query.all()
+    scores = {}
+    for a in analytics:
+        pid = a.data.get("product_id")
+        if pid:
+            product = Product.query.get(pid)
+            if product and (category_id is None or product.category_id == category_id):
+                scores[pid] = scores.get(pid, 0) + {"view": 1, "add_to_cart": 3, "purchase": 5}.get(a.event, 0)
+    return scores
+
+# Reusable recommendation function
+def recommend_products(limit, category_id=None, variety=False):
+    scores = get_product_scores(category_id)
+    all_products = Product.query.filter(Product.category_id == category_id if category_id else True).all()
+    
+    # Weight products by analytics scores, fallback to random
+    weighted_products = []
+    for p in all_products:
+        score = scores.get(p.id, 0) + random.random()  # Add randomness for variety
+        weighted_products.append((p, score))
+    
+    # Sort by score, shuffle if variety needed
+    weighted_products.sort(key=lambda x: x[1], reverse=True)
+    if variety:
+        random.shuffle(weighted_products[:limit * 2])  # Shuffle top candidates for diversity
+    
+    return [p[0] for p in weighted_products[:limit]]
+
+# Homepage with varied recommendations
+@api_routes.route('/', methods=['GET'])
+def homepage():
+    # 5 featured products (mixed categories)
+    featured = recommend_products(5, variety=True)
+    # 30 category-specific products (e.g., 10 each from 3 random categories)
+    categories = random.sample(Category.query.all(), 3)
+    category_recs = {cat.name: recommend_products(10, cat.id) for cat in categories}
+
+    response = {
+        "featured": [{"id": p.id, "name": p.name, "price": p.price, "image_url": p.images[0].image_url} for p in featured],
+        "categories": {
+            cat: [{"id": p.id, "name": p.name, "price": p.price, "image_url": p.images[0].image_url} for p in prods]
+            for cat, prods in category_recs.items()
+        }
+    }
+    return jsonify(response)
+
+# Category page with dynamic recommendations
+@api_routes.route('/category/<int:category_id>', methods=['GET'])
+def get_category_products(category_id):
+    category = Category.query.get_or_404(category_id)
+    products = recommend_products(20, category_id, variety=True)  # 20 products, varied each time
+    return jsonify({
+        "category": category.name,
+        "products": [{"id": p.id, "name": p.name, "price": p.price, "image_url": p.images[0].image_url} for p in products]
+    })
